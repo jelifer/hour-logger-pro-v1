@@ -47,41 +47,37 @@ function App() {
   const fetchLogs = async (role?: 'admin' | 'staff') => {
     const currentRole = role || userRole;
 
+    const { data, error } = await supabase
+      .from('work_logs')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching logs:', error);
+      return;
+    }
+
     if (currentRole === 'admin') {
-      const { data: logsData, error: logsError } = await supabase
-        .from('work_logs')
-        .select(`
-          *,
-          user_email:user_id (email)
-        `)
-        .order('date', { ascending: false });
+      const userIds = Array.from(new Set(data?.map(log => log.user_id) || []));
 
-      if (logsError) {
-        console.error('Error fetching logs:', logsError);
-      } else {
-        const { data: usersData } = await supabase.auth.admin.listUsers();
+      const { data: userRolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, email')
+        .in('user_id', userIds);
 
-        const logsWithEmail = (logsData || []).map(log => {
-          const userEmail = usersData?.users.find(u => u.id === log.user_id)?.email || 'Unknown';
-          return {
-            ...log,
-            user_email: userEmail
-          };
-        });
-        setLogs(logsWithEmail);
-      }
+      const userEmailMap: { [key: string]: string } = {};
+      userRolesData?.forEach(ur => {
+        userEmailMap[ur.user_id] = ur.email || 'Unknown';
+      });
+
+      const logsWithEmail = (data || []).map(log => ({
+        ...log,
+        user_email: userEmailMap[log.user_id] || 'Unknown'
+      }));
+
+      setLogs(logsWithEmail);
     } else {
-      const { data, error } = await supabase
-        .from('work_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching logs:', error);
-      } else {
-        setLogs(data || []);
-      }
+      setLogs(data || []);
     }
   };
 

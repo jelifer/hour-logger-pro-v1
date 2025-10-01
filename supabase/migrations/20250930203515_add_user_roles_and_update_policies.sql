@@ -12,6 +12,7 @@
     - `user_roles`
       - `user_id` (uuid, references auth.users, primary key)
       - `role` (text, either 'admin' or 'staff', default 'staff')
+      - `email` (text, stores user email for admin dashboard)
       - `created_at` (timestamptz, default now)
       - `updated_at` (timestamptz, default now)
 
@@ -30,6 +31,7 @@
 CREATE TABLE IF NOT EXISTS user_roles (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role text NOT NULL DEFAULT 'staff' CHECK (role IN ('admin', 'staff')),
+  email text,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -40,18 +42,25 @@ CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
 -- Enable RLS
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 
--- User roles policies
-CREATE POLICY "Users can view own role"
+-- User roles policies - admins can view all user roles, staff can view their own
+CREATE POLICY "Users can view roles based on permission"
   ON user_roles FOR SELECT
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING (
+    auth.uid() = user_id OR
+    EXISTS (
+      SELECT 1 FROM user_roles
+      WHERE user_roles.user_id = auth.uid()
+      AND user_roles.role = 'admin'
+    )
+  );
 
 -- Create function to automatically create staff role for new users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.user_roles (user_id, role)
-  VALUES (NEW.id, 'staff');
+  INSERT INTO public.user_roles (user_id, role, email)
+  VALUES (NEW.id, 'staff', NEW.email);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
