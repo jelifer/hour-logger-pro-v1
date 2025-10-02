@@ -13,6 +13,8 @@
       - `user_id` (uuid, references auth.users, primary key)
       - `role` (text, either 'admin' or 'staff', default 'staff')
       - `email` (text, stores user email for admin dashboard)
+      - `first_name` (text, user's first name)
+      - `last_name` (text, user's last name)
       - `created_at` (timestamptz, default now)
       - `updated_at` (timestamptz, default now)
 
@@ -32,6 +34,8 @@ CREATE TABLE IF NOT EXISTS user_roles (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role text NOT NULL DEFAULT 'staff' CHECK (role IN ('admin', 'staff')),
   email text,
+  first_name text,
+  last_name text,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -54,6 +58,12 @@ CREATE POLICY "Users can view roles based on permission"
       AND user_roles.role = 'admin'
     )
   );
+
+CREATE POLICY "Users can update own profile"
+  ON user_roles FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Create function to automatically create staff role for new users
 CREATE OR REPLACE FUNCTION public.handle_new_user()

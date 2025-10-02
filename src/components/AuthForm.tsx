@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { LogIn, UserPlus } from 'lucide-react';
 
 interface AuthFormProps {
-  onAuth: (email: string, password: string, isSignUp: boolean) => Promise<void>;
+  onAuth: (email: string, password: string, isSignUp: boolean, firstName?: string, lastName?: string) => Promise<void>;
 }
 
 export function AuthForm({ onAuth }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,7 +20,7 @@ export function AuthForm({ onAuth }: AuthFormProps) {
     setLoading(true);
 
     try {
-      await onAuth(email, password, isSignUp);
+      await onAuth(email, password, isSignUp, firstName, lastName);
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
@@ -45,6 +47,34 @@ export function AuthForm({ onAuth }: AuthFormProps) {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isSignUp && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  autoComplete="given-name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  autoComplete="family-name"
+                />
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
@@ -85,6 +115,8 @@ export function AuthForm({ onAuth }: AuthFormProps) {
             onClick={() => {
               setIsSignUp(!isSignUp);
               setError('');
+              setFirstName('');
+              setLastName('');
             }}
             className="text-sm text-blue-600 hover:text-blue-700"
           >

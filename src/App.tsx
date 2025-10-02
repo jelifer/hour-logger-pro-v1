@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Clock, Shield } from 'lucide-react';
+import { LogOut, Clock, Shield, User } from 'lucide-react';
 import { supabase, WorkLog, Holiday, getUserRole } from './lib/supabase';
 import { AuthForm } from './components/AuthForm';
 import { WorkLogForm } from './components/WorkLogForm';
@@ -7,6 +7,7 @@ import { LogHistory } from './components/LogHistory';
 import { HoursSummary } from './components/HoursSummary';
 import { HolidayCalculator } from './components/HolidayCalculator';
 import { EditLogModal } from './components/EditLogModal';
+import { UserProfile } from './components/UserProfile';
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -15,6 +16,7 @@ function App() {
   const [logs, setLogs] = useState<WorkLog[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [editingLog, setEditingLog] = useState<WorkLog | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -62,17 +64,21 @@ function App() {
 
       const { data: userRolesData } = await supabase
         .from('user_roles')
-        .select('user_id, email')
+        .select('user_id, email, first_name, last_name')
         .in('user_id', userIds);
 
-      const userEmailMap: { [key: string]: string } = {};
+      const userInfoMap: { [key: string]: string } = {};
       userRolesData?.forEach(ur => {
-        userEmailMap[ur.user_id] = ur.email || 'Unknown';
+        if (ur.first_name && ur.last_name) {
+          userInfoMap[ur.user_id] = `${ur.first_name} ${ur.last_name}`;
+        } else {
+          userInfoMap[ur.user_id] = ur.email || 'Unknown';
+        }
       });
 
       const logsWithEmail = (data || []).map(log => ({
         ...log,
-        user_email: userEmailMap[log.user_id] || 'Unknown'
+        user_email: userInfoMap[log.user_id] || 'Unknown'
       }));
 
       setLogs(logsWithEmail);
@@ -94,10 +100,21 @@ function App() {
     }
   };
 
-  const handleAuth = async (email: string, password: string, isSignUp: boolean) => {
+  const handleAuth = async (email: string, password: string, isSignUp: boolean, firstName?: string, lastName?: string) => {
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
+
+      if (data.user && firstName && lastName) {
+        const { error: profileError } = await supabase
+          .from('user_roles')
+          .update({ first_name: firstName, last_name: lastName })
+          .eq('user_id', data.user.id);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
@@ -220,13 +237,22 @@ function App() {
                 </span>
               )}
             </div>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowProfile(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                <User className="w-4 h-4" />
+                Profile
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -254,6 +280,13 @@ function App() {
         onClose={() => setEditingLog(null)}
         onSave={handleUpdateLog}
       />
+
+      {showProfile && (
+        <UserProfile
+          user={user}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
     </div>
   );
 }
