@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { History, CreditCard as Edit2, Trash2, Download } from 'lucide-react';
+import { History, CreditCard as Edit2, Trash2, Download, Search } from 'lucide-react';
 import { WorkLog } from '../lib/supabase';
 
 interface LogHistoryProps {
@@ -19,8 +19,14 @@ export function LogHistory({ logs, onEdit, onDelete, isAdmin = false }: LogHisto
   const [selectedMonth, setSelectedMonth] = useState('All');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedUser, setSelectedUser] = useState('All');
+  const [searchUser, setSearchUser] = useState('');
 
   const years = ['All', ...Array.from(new Set(logs.map(log => new Date(log.date).getFullYear()))).sort((a, b) => b - a)];
+
+  const uniqueUsers = isAdmin
+    ? ['All', ...Array.from(new Set(logs.map(log => log.user_email).filter(Boolean))).sort()]
+    : [];
 
   const filteredLogs = logs.filter(log => {
     const logDate = new Date(log.date);
@@ -31,6 +37,14 @@ export function LogHistory({ logs, onEdit, onDelete, isAdmin = false }: LogHisto
     if (selectedMonth !== 'All' && logMonth !== MONTHS.indexOf(selectedMonth)) return false;
     if (startDate && log.date < startDate) return false;
     if (endDate && log.date > endDate) return false;
+
+    if (isAdmin && selectedUser !== 'All' && log.user_email !== selectedUser) return false;
+
+    if (isAdmin && searchUser.trim() !== '') {
+      const userEmail = log.user_email?.toLowerCase() || '';
+      const search = searchUser.toLowerCase();
+      if (!userEmail.includes(search)) return false;
+    }
 
     return true;
   });
@@ -64,6 +78,45 @@ export function LogHistory({ logs, onEdit, onDelete, isAdmin = false }: LogHisto
         </button>
       </div>
       <p className="text-sm text-gray-600 mb-6">A record of all your logged work hours</p>
+
+      {isAdmin && (
+        <div className="mb-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filter by User</label>
+              <select
+                value={selectedUser}
+                onChange={(e) => {
+                  setSelectedUser(e.target.value);
+                  setSearchUser('');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {uniqueUsers.map(user => (
+                  <option key={user} value={user}>{user}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search User by Name/Email</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchUser}
+                  onChange={(e) => {
+                    setSearchUser(e.target.value);
+                    setSelectedUser('All');
+                  }}
+                  placeholder="Type to search..."
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div>
