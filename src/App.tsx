@@ -67,12 +67,20 @@ function App() {
         .select('user_id, email, first_name, last_name')
         .in('user_id', userIds);
 
+      const { data: authUsersData } = await supabase.auth.admin.listUsers();
+
       const userInfoMap: { [key: string]: string } = {};
       userRolesData?.forEach(ur => {
         if (ur.first_name && ur.last_name) {
           userInfoMap[ur.user_id] = `${ur.first_name} ${ur.last_name}`;
-        } else {
-          userInfoMap[ur.user_id] = ur.email || 'Unknown';
+        } else if (ur.email) {
+          userInfoMap[ur.user_id] = ur.email;
+        }
+      });
+
+      authUsersData?.users?.forEach(authUser => {
+        if (!userInfoMap[authUser.id]) {
+          userInfoMap[authUser.id] = authUser.email || 'Unknown';
         }
       });
 
