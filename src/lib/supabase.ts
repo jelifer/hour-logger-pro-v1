@@ -29,6 +29,9 @@ export interface Holiday {
 export interface UserRole {
   user_id: string;
   role: 'admin' | 'staff';
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
   created_at: string;
   updated_at: string;
 }
