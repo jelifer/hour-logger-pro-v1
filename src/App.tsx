@@ -293,6 +293,7 @@ function App() {
         <UserProfile
           user={user}
           onClose={() => setShowProfile(false)}
+          onUpdate={() => fetchLogs()}
         />
       )}
     </div>

@@ -5,9 +5,10 @@ import { supabase } from '../lib/supabase';
 interface UserProfileProps {
   user: any;
   onClose: () => void;
+  onUpdate?: () => void;
 }
 
-export function UserProfile({ user, onClose }: UserProfileProps) {
+export function UserProfile({ user, onClose, onUpdate }: UserProfileProps) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -63,6 +64,7 @@ export function UserProfile({ user, onClose }: UserProfileProps) {
       }
 
       setMessage('Profile updated successfully!');
+      if (onUpdate) onUpdate();
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
     } finally {
